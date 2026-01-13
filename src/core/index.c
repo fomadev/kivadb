@@ -54,3 +54,18 @@ void index_set(KivaDB* db, const char* key, long offset, uint32_t v_size) {
         db->index[h] = new_node;
     }
 }
+
+void index_scan(KivaDB* db) {
+    printf("--- Current Keys in Database ---\n");
+    int count = 0;
+    for (int i = 0; i < HASH_SIZE; i++) {
+        HashNode* node = db->index[i];
+        while (node) {
+            // On affiche la clé et la taille de sa valeur sur le disque
+            printf("  -> %s (%u bytes)\n", node->key, node->entry.v_size);
+            node = node->next;
+            count++;
+        }
+    }
+    printf("Total: %d keys found.\n", count);
+}

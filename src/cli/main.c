@@ -66,6 +66,14 @@ int main() {
             print_help();
             executed = 0;
         }
+        else if (strcmp(cmd, "scan") == 0) {
+            clock_t start = clock();
+            index_scan(db);
+            clock_t end = clock();
+            double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+            printf("Scan completed in %.6f sec\n", time_spent);
+            executed = 0; // On évite le double affichage du temps dans le shell
+        }
         else if (strcmp(cmd, "exit") == 0) {
             break;
         }

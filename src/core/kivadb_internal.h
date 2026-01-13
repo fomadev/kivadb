@@ -33,4 +33,6 @@ void index_remove(KivaDB* db, const char* key);
 int kiva_lock_file(FILE* file);
 void kiva_unlock_file(FILE* file);
 
+void index_scan(KivaDB* db);
+
 #endif

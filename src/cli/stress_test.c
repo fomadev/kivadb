@@ -3,7 +3,7 @@
 #include <time.h>
 #include "../../include/kivadb.h"
 
-#define NUM_ENTRIES 10000
+#define NUM_ENTRIES 100000
 
 int main() {
     KivaDB* db = kiva_open("stress_test.kiva");
