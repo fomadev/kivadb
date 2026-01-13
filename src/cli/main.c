@@ -5,38 +5,34 @@
 int main() {
     printf("--- KivaDB v1.0.0 Test Suite ---\n");
 
-    // 1. Ouvrir la base de données
     KivaDB* db = kiva_open("test_store.kiva");
-    if (!db) {
-        fprintf(stderr, "Error: Could not open the database file.\n");
-        return 1;
+    if (!db) return 1;
+
+    // Test SET
+    printf("Setting [test_key] -> [Hello Kiva]...\n");
+    kiva_set(db, "test_key", "Hello Kiva");
+
+    // Test DELETE
+    printf("Deleting [test_key]...\n");
+    kiva_delete(db, "test_key");
+
+    char* val = kiva_get(db, "test_key");
+    if (val == NULL) {
+        printf("Success: [test_key] is no longer in memory.\n");
     }
 
-    // 2. Écrire une donnée
-    printf("Setting [session_id] -> [ABC-123]...\n");
-    kiva_set(db, "session_id", "ABC-123");
-
-    // 3. Lire la donnée immédiatement
-    char* val = kiva_get(db, "session_id");
-    if (val) {
-        printf("Retrieved value: %s\n", val);
-        free(val);
-    }
-
-    // 4. Fermer la base
     kiva_close(db);
-    printf("Database closed.\n");
 
-    // 5. Ré-ouvrir pour tester la PERSISTANCE
-    printf("\n--- Testing Persistence (Re-opening) ---\n");
+    // Test PERSISTENCE de la suppression
+    printf("\n--- Testing Persistence of Deletion ---\n");
     db = kiva_open("test_store.kiva");
+    char* val_restart = kiva_get(db, "test_key");
     
-    char* persisted_val = kiva_get(db, "session_id");
-    if (persisted_val) {
-        printf("Success! Value recovered after restart: %s\n", persisted_val);
-        free(persisted_val);
+    if (val_restart == NULL) {
+        printf("Success: [test_key] is still gone after restart!\n");
     } else {
-        printf("Failure: The value was lost.\n");
+        printf("Failure: [test_key] was found: %s\n", val_restart);
+        free(val_restart);
     }
 
     kiva_close(db);

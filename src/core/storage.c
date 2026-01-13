@@ -8,6 +8,9 @@
 #include "../../include/kivadb.h"
 #include "kivadb_internal.h"
 
+#include <io.h>     // Pour _locking sur Windows
+#include <sys/locking.h>
+
 // --- INTERNAL UTILS ---
 
 unsigned long hash_function(const char* str) {
@@ -33,38 +36,56 @@ static void kiva_load_index(KivaDB* db) {
         fread(key, 1, k_size, db->file);
         key[k_size] = '\0';
 
-        long value_offset = ftell(db->file);
-        
-        unsigned long h = hash_function(key);
-        HashNode* node = db->index[h];
-        int found = 0;
-        
-        while (node) {
-            if (strcmp(node->key, key) == 0) {
-                node->entry.offset = value_offset;
-                node->entry.v_size = v_size;
-                found = 1;
-                break;
+        // Si v_size == 0, c'est un "Tombstone" (suppression)
+        if (v_size == 0) {
+            unsigned long h = hash_function(key);
+            HashNode* node = db->index[h];
+            HashNode* prev = NULL;
+            while (node) {
+                if (strcmp(node->key, key) == 0) {
+                    if (prev) prev->next = node->next;
+                    else db->index[h] = node->next;
+                    free(node->key);
+                    free(node);
+                    break;
+                }
+                prev = node;
+                node = node->next;
             }
-            node = node->next;
-        }
+            free(key); // On n'a plus besoin de la clé du tombstone
+        } else {
+            // C'est une insertion ou une mise à jour
+            long value_offset = ftell(db->file);
+            unsigned long h = hash_function(key);
+            HashNode* node = db->index[h];
+            int found = 0;
+            
+            while (node) {
+                if (strcmp(node->key, key) == 0) {
+                    node->entry.offset = value_offset;
+                    node->entry.v_size = v_size;
+                    found = 1;
+                    break;
+                }
+                node = node->next;
+            }
 
-        if (!found) {
-            HashNode* new_node = malloc(sizeof(HashNode));
-            if (new_node) {
-                new_node->key = key; 
-                new_node->entry.offset = value_offset;
-                new_node->entry.v_size = v_size;
-                new_node->next = db->index[h];
-                db->index[h] = new_node;
+            if (!found) {
+                HashNode* new_node = malloc(sizeof(HashNode));
+                if (new_node) {
+                    new_node->key = key; 
+                    new_node->entry.offset = value_offset;
+                    new_node->entry.v_size = v_size;
+                    new_node->next = db->index[h];
+                    db->index[h] = new_node;
+                } else {
+                    free(key);
+                }
             } else {
                 free(key);
             }
-        } else {
-            free(key);
+            fseek(db->file, v_size, SEEK_CUR); // Sauter la valeur pour passer au suivant
         }
-
-        fseek(db->file, v_size, SEEK_CUR);
     }
 }
 
@@ -82,8 +103,20 @@ KivaDB* kiva_open(const char* path) {
         return NULL;
     }
 
-    for (int i = 0; i < HASH_SIZE; i++) db->index[i] = NULL;
+    // Appliquer un verrouillage sur le fichier (Windows style)
+    // Cela empêche d'autres processus d'écrire en même temps
+    int fd = fileno(db->file);
+    _lseek(fd, 0L, SEEK_SET);
+    if (_locking(fd, _LK_NBLCK, 1L) == -1) {
+        // Si le fichier est déjà verrouillé par un autre processus
+        printf("Error: Database is locked by another process.\n");
+        fclose(db->file);
+        free(db->path);
+        free(db);
+        return NULL;
+    }
 
+    for (int i = 0; i < HASH_SIZE; i++) db->index[i] = NULL;
     kiva_load_index(db);
     
     return db;
@@ -161,4 +194,42 @@ void kiva_close(KivaDB* db) {
     fclose(db->file);
     free(db->path);
     free(db);
+}
+
+KivaStatus kiva_delete(KivaDB* db, const char* key) {
+    if (!db || !key) return KIVA_ERR_NOT_FOUND;
+
+    unsigned long h = hash_function(key);
+    HashNode* node = db->index[h];
+    HashNode* prev = NULL;
+
+    while (node) {
+        if (strcmp(node->key, key) == 0) {
+            // 1. Écrire un marqueur de suppression sur le disque (Tombstone)
+            // Pour la v1.0.0, on écrit une entrée avec une ValueSize de 0
+            uint32_t k_size = (uint32_t)strlen(key);
+            uint32_t tombstone_v_size = 0;
+
+            fseek(db->file, 0, SEEK_END);
+            fwrite(&k_size, sizeof(uint32_t), 1, db->file);
+            fwrite(&tombstone_v_size, sizeof(uint32_t), 1, db->file);
+            fwrite(key, 1, k_size, db->file);
+            fflush(db->file);
+
+            // 2. Retirer de l'index en mémoire
+            if (prev) {
+                prev->next = node->next;
+            } else {
+                db->index[h] = node->next;
+            }
+
+            free(node->key);
+            free(node);
+            return KIVA_OK;
+        }
+        prev = node;
+        node = node->next;
+    }
+
+    return KIVA_ERR_NOT_FOUND;
 }
