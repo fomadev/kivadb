@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h> // Pour mesurer le temps
 #include "../../include/kivadb.h"
 
 void print_help() {
@@ -20,46 +21,66 @@ int main() {
     }
 
     char cmd[256], key[128], val[128];
-    printf("KivaDB Shell v1.1.0 (Type 'help' for commands)\n");
+    printf("KivaDB Shell v1.1.0 (with timing)\n");
+    printf("Type 'help' for commands\n");
 
     while (1) {
         printf("kiva> ");
         if (fgets(cmd, sizeof(cmd), stdin) == NULL) break;
 
-        // On retire le \n à la fin de la commande
         cmd[strcspn(cmd, "\n")] = 0;
+        if (strlen(cmd) == 0) continue;
+
+        // --- Début du chronomètre ---
+        clock_t start = clock();
+        int executed = 1;
 
         if (strncmp(cmd, "set ", 4) == 0) {
-            sscanf(cmd + 4, "%s %s", key, val);
-            kiva_set(db, key, val);
-            printf("OK\n");
+            if (sscanf(cmd + 4, "%s %s", key, val) == 2) {
+                kiva_set(db, key, val);
+                printf("OK");
+            } else {
+                printf("Usage: set <key> <value>");
+            }
         } 
         else if (strncmp(cmd, "get ", 4) == 0) {
             sscanf(cmd + 4, "%s", key);
             char* res = kiva_get(db, key);
             if (res) {
-                printf("\"%s\"\n", res);
+                printf("\"%s\"", res);
                 free(res);
             } else {
-                printf("(nil)\n");
+                printf("(nil)");
             }
         } 
         else if (strncmp(cmd, "del ", 4) == 0) {
             sscanf(cmd + 4, "%s", key);
             kiva_delete(db, key);
-            printf("OK\n");
+            printf("OK");
         }
         else if (strcmp(cmd, "compact") == 0) {
             kiva_compact(db);
+            printf("Compaction done");
         }
         else if (strcmp(cmd, "help") == 0) {
             print_help();
+            executed = 0;
         }
         else if (strcmp(cmd, "exit") == 0) {
             break;
         }
-        else if (strlen(cmd) > 0) {
-            printf("Unknown command. Type 'help'.\n");
+        else {
+            printf("Unknown command.");
+            executed = 0;
+        }
+
+        // --- Fin du chronomètre ---
+        clock_t end = clock();
+        if (executed) {
+            double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+            printf(" (%.6f sec)\n", time_spent);
+        } else {
+            printf("\n");
         }
     }
 
