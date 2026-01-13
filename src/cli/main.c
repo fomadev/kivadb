@@ -1,71 +1,69 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "../../include/kivadb.h"
 
-int main() {
-    printf("--- KivaDB v1.0.0 Full Test Suite ---\n");
+void print_help() {
+    printf("Commands: \n");
+    printf("  set <key> <value>  : Store a pair\n");
+    printf("  get <key>          : Retrieve a value\n");
+    printf("  del <key>          : Remove a key\n");
+    printf("  compact            : Clean the database file\n");
+    printf("  exit               : Close KivaDB and leave\n");
+}
 
-    // 1. Initialisation et ouverture
+int main() {
     KivaDB* db = kiva_open("test_store.kiva");
     if (!db) {
-        fprintf(stderr, "Error: Could not open/lock database.\n");
+        printf("Error: Could not open database.\n");
         return 1;
     }
 
-    // 2. Test d'écriture et de lecture (SET/GET)
-    printf("\n[1] Testing Write/Read...\n");
-    kiva_set(db, "user_1", "Alice");
-    kiva_set(db, "user_2", "Bob");
-    
-    char* name = kiva_get(db, "user_1");
-    if (name) {
-        printf("Retrieved user_1: %s\n", name);
-        free(name);
-    }
+    char cmd[256], key[128], val[128];
+    printf("KivaDB Shell v1.1.0 (Type 'help' for commands)\n");
 
-    // 3. Test de suppression (DELETE)
-    printf("\n[2] Testing Deletion...\n");
-    kiva_delete(db, "user_2");
-    char* deleted_check = kiva_get(db, "user_2");
-    if (deleted_check == NULL) {
-        printf("Success: user_2 was deleted.\n");
-    }
+    while (1) {
+        printf("kiva> ");
+        if (fgets(cmd, sizeof(cmd), stdin) == NULL) break;
 
-    // 4. Test de mise à jour (Update)
-    // En Append-Only, cela rajoute simplement une donnée à la fin
-    printf("\n[3] Testing Updates (Append-only growth)...\n");
-    kiva_set(db, "user_1", "Alice Updated");
-    kiva_set(db, "user_1", "Alice Final Version");
-    
-    char* updated_name = kiva_get(db, "user_1");
-    printf("Latest version of user_1: %s\n", updated_name);
-    free(updated_name);
+        // On retire le \n à la fin de la commande
+        cmd[strcspn(cmd, "\n")] = 0;
 
-    // 5. Test de Compaction
-    // Cela va nettoyer le fichier et ne garder que "Alice Final Version"
-    printf("\n[4] Testing Compaction (Disk cleanup)...\n");
-    kiva_compact(db);
-    
-    char* post_compact = kiva_get(db, "user_1");
-    printf("Value after compaction: %s\n", post_compact);
-    free(post_compact);
-
-    // 6. Fermeture
-    kiva_close(db);
-    printf("\nDatabase closed.\n");
-
-    // 7. Test de Persistance Finale
-    printf("\n[5] Testing Final Persistence (Re-opening)...\n");
-    db = kiva_open("test_store.kiva");
-    if (db) {
-        char* persisted = kiva_get(db, "user_1");
-        if (persisted) {
-            printf("Persistence Success: %s\n", persisted);
-            free(persisted);
+        if (strncmp(cmd, "set ", 4) == 0) {
+            sscanf(cmd + 4, "%s %s", key, val);
+            kiva_set(db, key, val);
+            printf("OK\n");
+        } 
+        else if (strncmp(cmd, "get ", 4) == 0) {
+            sscanf(cmd + 4, "%s", key);
+            char* res = kiva_get(db, key);
+            if (res) {
+                printf("\"%s\"\n", res);
+                free(res);
+            } else {
+                printf("(nil)\n");
+            }
+        } 
+        else if (strncmp(cmd, "del ", 4) == 0) {
+            sscanf(cmd + 4, "%s", key);
+            kiva_delete(db, key);
+            printf("OK\n");
         }
-        kiva_close(db);
+        else if (strcmp(cmd, "compact") == 0) {
+            kiva_compact(db);
+        }
+        else if (strcmp(cmd, "help") == 0) {
+            print_help();
+        }
+        else if (strcmp(cmd, "exit") == 0) {
+            break;
+        }
+        else if (strlen(cmd) > 0) {
+            printf("Unknown command. Type 'help'.\n");
+        }
     }
 
-    printf("\n--- All tests completed successfully ---\n");
+    kiva_close(db);
+    printf("Bye!\n");
     return 0;
 }
