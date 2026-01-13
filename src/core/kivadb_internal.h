@@ -2,30 +2,28 @@
 #define KIVADB_INTERNAL_H
 
 #include <stdio.h>
-#include "../../include/kivadb.h"
+#include <stdint.h>
+#include "../../include/kivadb.h" // Vérifie que ce chemin est correct
 
-// Représente l'emplacement d'une valeur sur le disque
+#define HASH_SIZE 1024
+
 typedef struct {
-    long offset;      // Position dans le fichier
-    uint32_t v_size;  // Taille de la valeur
+    long offset;      
+    uint32_t v_size;  
 } KeyDirEntry;
 
-// Une entrée simple pour notre Hash Map (chaînage en cas de collision)
 typedef struct HashNode {
     char* key;
     KeyDirEntry entry;
     struct HashNode* next;
 } HashNode;
 
-#define HASH_SIZE 1024
-
 struct KivaDB {
     FILE* file;
     char* path;
-    HashNode* index[HASH_SIZE]; // Notre index en mémoire
+    HashNode* index[HASH_SIZE]; 
 };
 
-// Fonction de hachage simple (djb2)
 unsigned long hash_function(const char* str);
 
 #endif

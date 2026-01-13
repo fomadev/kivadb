@@ -1,4 +1,14 @@
-// --- UTILITAIRES INTERNES ---
+#define _DEFAULT_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+// On inclut les fichiers du projet
+#include "../../include/kivadb.h"
+#include "kivadb_internal.h"
+
+// --- INTERNAL UTILS ---
 
 unsigned long hash_function(const char* str) {
     unsigned long hash = 5381;
@@ -9,22 +19,22 @@ unsigned long hash_function(const char* str) {
     return hash % HASH_SIZE;
 }
 
-// Reconstruit l'index RAM à partir du fichier disque
+// Rebuilds the RAM index from the disk file
 static void kiva_load_index(KivaDB* db) {
     fseek(db->file, 0, SEEK_SET);
     uint32_t k_size, v_size;
 
-    // Lire le fichier tant qu'on peut lire les tailles d'en-tête
     while (fread(&k_size, sizeof(uint32_t), 1, db->file) == 1) {
-        fread(&v_size, sizeof(uint32_t), 1, db->file);
+        if (fread(&v_size, sizeof(uint32_t), 1, db->file) != 1) break;
         
         char* key = malloc(k_size + 1);
+        if (!key) return;
+        
         fread(key, 1, k_size, db->file);
         key[k_size] = '\0';
 
         long value_offset = ftell(db->file);
         
-        // Mettre à jour l'index
         unsigned long h = hash_function(key);
         HashNode* node = db->index[h];
         int found = 0;
@@ -41,21 +51,24 @@ static void kiva_load_index(KivaDB* db) {
 
         if (!found) {
             HashNode* new_node = malloc(sizeof(HashNode));
-            new_node->key = key; // On réutilise la mémoire allouée plus haut
-            new_node->entry.offset = value_offset;
-            new_node->entry.v_size = v_size;
-            new_node->next = db->index[h];
-            db->index[h] = new_node;
+            if (new_node) {
+                new_node->key = key; 
+                new_node->entry.offset = value_offset;
+                new_node->entry.v_size = v_size;
+                new_node->next = db->index[h];
+                db->index[h] = new_node;
+            } else {
+                free(key);
+            }
         } else {
-            free(key); // Clé déjà indexée (version plus ancienne), on libère
+            free(key);
         }
 
-        // Sauter la valeur pour passer à l'entrée suivante
         fseek(db->file, v_size, SEEK_CUR);
     }
 }
 
-// --- API PUBLIQUE ---
+// --- PUBLIC API ---
 
 KivaDB* kiva_open(const char* path) {
     KivaDB* db = malloc(sizeof(KivaDB));
@@ -71,7 +84,6 @@ KivaDB* kiva_open(const char* path) {
 
     for (int i = 0; i < HASH_SIZE; i++) db->index[i] = NULL;
 
-    // Charger l'index existant
     kiva_load_index(db);
     
     return db;
