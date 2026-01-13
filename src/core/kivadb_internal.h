@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include "../../include/kivadb.h" // Vérifie que ce chemin est correct
+#include "../../include/kivadb.h"
 
 #define HASH_SIZE 1024
 
@@ -24,6 +24,13 @@ struct KivaDB {
     HashNode* index[HASH_SIZE]; 
 };
 
+// --- Fonctions de index.c ---
 unsigned long hash_function(const char* str);
+void index_set(KivaDB* db, const char* key, long offset, uint32_t v_size);
+void index_remove(KivaDB* db, const char* key);
+
+// --- Fonctions de transaction.c ---
+int kiva_lock_file(FILE* file);
+void kiva_unlock_file(FILE* file);
 
 #endif
