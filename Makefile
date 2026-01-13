@@ -10,5 +10,6 @@ all: $(TARGET)
 $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $(TARGET)
 
+# Remplacer la section clean par ceci :
 clean:
-	del /f /s *.o $(TARGET).exe
+	@if [ -f kivadb_cli.exe ]; then rm -f src/core/*.o src/cli/*.o kivadb_cli.exe; else del /f /s *.o kivadb_cli.exe; fi

@@ -21,7 +21,7 @@ int main() {
     }
 
     char cmd[256], key[128], val[128];
-    printf("KivaDB Shell v1.1.0 (with timing)\n");
+    printf("KivaDB Shell v1.0.0 (with timing)\n");
     printf("Type 'help' for commands\n");
 
     while (1) {
@@ -36,7 +36,7 @@ int main() {
         int executed = 1;
 
         if (strncmp(cmd, "set ", 4) == 0) {
-            if (sscanf(cmd + 4, "%s %s", key, val) == 2) {
+            if (sscanf(cmd + 4, "%s %[^\n]", key, val) == 2) {
                 kiva_set(db, key, val);
                 printf("OK");
             } else {
