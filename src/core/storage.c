@@ -32,13 +32,19 @@ KivaDB* kiva_open(const char* path) {
     KivaDB* db = calloc(1, sizeof(KivaDB));
     if (!db) return NULL;
     db->path = strdup(path);
-    db->file = fopen(path, "ab+");
     
+    // On ouvre le fichier
+    db->file = fopen(path, "ab+");
     if (!db->file || kiva_lock_file(db->file) == -1) {
         if (db->file) fclose(db->file);
         free(db->path); free(db);
         return NULL;
     }
+
+    // --- OPTIMISATION : AJOUT DU BUFFER ---
+    // On crée un buffer de 64 Ko (65536 octets)
+    // Cela regroupe les petites écritures en une seule grosse écriture disque
+    setvbuf(db->file, NULL, _IOFBF, 65536);
 
     kiva_load_index(db);
     return db;
