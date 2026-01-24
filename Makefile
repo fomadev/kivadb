@@ -1,36 +1,26 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -Iinclude
 
-# Liste des objets nécessaires
+# Liste des objets
 CORE_OBJ = src/core/storage.o src/core/index.o src/core/transaction.o
 CLI_OBJ = src/cli/main.o
 STRESS_OBJ = src/cli/stress_test.o
 
-all: kivadb_cli stress_test
+# On demande à construire 'kivadb' (le nouveau nom) et 'stress_test'
+all: kivadb stress_test
 
-# Compilation des fichiers Core
-src/core/storage.o: src/core/storage.c
-	$(CC) $(CFLAGS) -c src/core/storage.c -o src/core/storage.o
+# Règle pour l'exécutable principal (renommé en kivadb)
+kivadb: $(CORE_OBJ) $(CLI_OBJ)
+	$(CC) $(CORE_OBJ) $(CLI_OBJ) -o kivadb
 
-src/core/index.o: src/core/index.c
-	$(CC) $(CFLAGS) -c src/core/index.c -o src/core/index.o
+# Règle pour l'outil de stress test
+stress_test: $(CORE_OBJ) $(STRESS_OBJ)
+	$(CC) $(CORE_OBJ) $(STRESS_OBJ) -o stress_test
 
-src/core/transaction.o: src/core/transaction.c
-	$(CC) $(CFLAGS) -c src/core/transaction.c -o src/core/transaction.o
+# Compilation des fichiers .o (Règles génériques pour simplifier)
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Compilation des fichiers CLI
-src/cli/main.o: src/cli/main.c
-	$(CC) $(CFLAGS) -c src/cli/main.c -o src/cli/main.o
-
-src/cli/stress_test.o: src/cli/stress_test.c
-	$(CC) $(CFLAGS) -c src/cli/stress_test.c -o src/cli/stress_test.o
-
-# Liaison (Linking)
-kivadb_cli: $(CORE_OBJ) src/cli/main.o
-	$(CC) $(CORE_OBJ) src/cli/main.o -o kivadb_cli
-
-stress_test: $(CORE_OBJ) src/cli/stress_test.o
-	$(CC) $(CORE_OBJ) src/cli/stress_test.o -o stress_test
-
+# Nettoyage (Ajout de kivadb sans .exe pour être compatible tout système)
 clean:
-	rm -f src/core/*.o src/cli/*.o kivadb_cli.exe stress_test.exe
+	rm -f src/core/*.o src/cli/*.o kivadb kivadb.exe stress_test stress_test.exe

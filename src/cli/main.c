@@ -4,6 +4,7 @@
 #include <time.h> // Pour mesurer le temps
 #include "../../include/kivadb.h"
 #include "../core/kivadb_internal.h"
+#include <direct.h> // Pour _mkdir sur Windows
 
 void print_help() {
     printf("\n--- KivaDB Shell Help ---\n");
@@ -20,14 +21,20 @@ void print_help() {
 }
 
 int main() {
-    KivaDB* db = kiva_open("test_store.kiva");
+    // 1. Création du dossier data s'il n'existe pas
+    _mkdir("data");
+
+    // 2. Nouveau chemin vers le fichier de stockage plus propre
+    const char* db_path = "data/store.kiva";
+
+    KivaDB* db = kiva_open(db_path);
     if (!db) {
-        printf("Error: Could not open database.\n");
+        printf("Erreur : Impossible d'ouvrir ou créer %s\n", db_path);
         return 1;
     }
 
     char cmd[256], key[128], val[128];
-    printf("KivaDB Shell v1.0.0 (with timing)\n");
+    printf("KivaDB Shell v1.0.1 (with timing)\n");
     printf("Type 'help' for commands\n");
 
     while (1) {
