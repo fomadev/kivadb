@@ -1,6 +1,8 @@
 #ifndef KIVADB_H
 #define KIVADB_H
 
+#define KIVADB_VERSION "1.0.1"
+
 #include <stddef.h>
 #include <stdint.h>
 

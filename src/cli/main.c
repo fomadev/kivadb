@@ -20,7 +20,27 @@ void print_help() {
     printf("-------------------------\n");
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    // Gestion des arguments de ligne de commande
+    if (argc > 1) {
+        if (
+            strcmp(argv[1], "-version") == 0 
+            || 
+            strcmp(argv[1], "--version") == 0 
+            || 
+            strcmp(argv[1], "-v") == 0 
+            || 
+            strcmp(argv[1], "--v") == 0
+        ) {
+            printf("kivadb version %s\n", KIVADB_VERSION);
+            return 0;
+        }
+        
+        if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
+            print_help();
+            return 0;
+        }
+    }
     // 1. Création du dossier data s'il n'existe pas
     _mkdir("data");
 
