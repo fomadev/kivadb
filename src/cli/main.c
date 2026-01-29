@@ -8,15 +8,16 @@
 
 void print_help() {
     printf("\n--- KivaDB Shell Help ---\n");
-    printf("  set <key> <val>   : Create a NEW key-value pair\n");
-    printf("  update <key> <val>: Update an EXISTING key\n");
-    printf("  get <key>        : Retrieve value of a key\n");
-    printf("  del <key>        : Remove a key from database\n");
-    printf("  scan             : List all existing keys\n");
-    printf("  stats            : Show database health and file size\n");
-    printf("  compact          : Reclaim disk space (defragmentation)\n");
-    printf("  help or h or \\h  : Show this help menu\n");
-    printf("  exit             : Close database and quit\n");
+    printf("  set <key> <val>    : Create a NEW key-value pair (use \"\" for spaces)\n");
+    printf("  update <key> <val> : Update an EXISTING key\n");
+    printf("  get <key>          : Retrieve value of a key\n");
+    printf("  typeof <key>       : Show the dynamic data type (string, number, boolean)\n");
+    printf("  del <key>          : Remove a key from database\n");
+    printf("  scan               : List all keys with their types and sizes\n");
+    printf("  stats              : Show database health and file size\n");
+    printf("  compact            : Reclaim disk space (defragmentation)\n");
+    printf("  help or h          : Show this help menu\n");
+    printf("  exit               : Close database and quit\n");
     printf("-------------------------\n");
 }
 
@@ -54,7 +55,7 @@ int main(int argc, char* argv[]) {
     }
 
     char cmd[256], key[128], val[128];
-    printf("KivaDB Shell v1.0.1 (with timing)\n");
+    printf("KivaDB Shell v%s\n", KIVADB_VERSION);
     printf("Type 'help' for commands\n");
 
     while (1) {
@@ -69,42 +70,54 @@ int main(int argc, char* argv[]) {
         int executed = 1;
 
         if (strncmp(cmd, "set ", 4) == 0) {
-            char extra[128];
-            int num_args = sscanf(cmd + 4, "%s %s %s", key, val, extra);
+            char *ptr = cmd + 4;
+            char key[128], val[256];
 
-            if (num_args != 2) {
-                printf("Error: 'set' expects exactly 2 arguments (key value).\n");
+            // On lit la clé
+            if (sscanf(ptr, "%s", key) != 1) {
+                printf("Usage: set <key> <value>\n");
                 executed = 0;
             } else {
+                ptr = strstr(ptr, key) + strlen(key);
+                while (*ptr == ' ') ptr++; // On saute les espaces
+
+                // Gestion des guillemets pour la valeur
+                if (*ptr == '"') {
+                    sscanf(ptr + 1, "%[^\"]", val);
+                } else {
+                    sscanf(ptr, "%s", val);
+                }
+
+                // Vérification si la clé existe déjà
                 char* existing = kiva_get(db, key);
                 if (existing) {
-                    printf("Error: Key '%s' already exists. Use 'update' to change it.\n", key);
+                    printf("Error: Key '%s' already exists. Use 'update'.\n", key);
                     free(existing);
                     executed = 0;
                 } else {
                     kiva_set(db, key, val);
-                    printf("OK (Created)\n");
+                    printf("OK (Created)");
                 }
             }
         }
         // --- Logique pour UPDATE (Nouvelle commande) ---
         else if (strncmp(cmd, "update ", 7) == 0) {
-            char extra[128];
-            int num_args = sscanf(cmd + 7, "%s %s %s", key, val, extra);
+            char *ptr = cmd + 7;
+            sscanf(ptr, "%s", key);
+            ptr = strstr(ptr, key) + strlen(key);
+            while (*ptr == ' ') ptr++;
+            
+            if (*ptr == '"') sscanf(ptr + 1, "%[^\"]", val);
+            else sscanf(ptr, "%s", val);
 
-            if (num_args != 2) {
-                printf("Error: 'update' expects exactly 2 arguments (key value).\n");
+            char* existing = kiva_get(db, key);
+            if (!existing) {
+                printf("Error: Key '%s' not found.", key);
                 executed = 0;
             } else {
-                char* existing = kiva_get(db, key);
-                if (!existing) {
-                    printf("Error: Key '%s' does not exist. Use 'set' to create it.\n", key);
-                    executed = 0;
-                } else {
-                    kiva_set(db, key, val); // Ici on utilise kiva_set car il gère l'écrasement dans l'index
-                    printf("OK (Updated)\n");
-                    free(existing);
-                }
+                kiva_set(db, key, val);
+                printf("OK (Updated)");
+                free(existing);
             }
         }
         else if (strncmp(cmd, "get ", 4) == 0) {
@@ -125,6 +138,14 @@ int main(int argc, char* argv[]) {
                 executed = 0;
             }
         } 
+        else if (strncmp(cmd, "typeof ", 7) == 0) {
+            if (sscanf(cmd + 7, "%s", key) == 1) {
+                printf("Type: %s", kiva_typeof(db, key));
+            } else {
+                printf("Usage: typeof <key>");
+                executed = 0;
+            }
+        }
         else if (strncmp(cmd, "del ", 4) == 0) {
             char extra[128];
             int num_args = sscanf(cmd + 4, "%s %s", key, extra);

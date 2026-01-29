@@ -6,10 +6,10 @@ CORE_OBJ = src/core/storage.o src/core/index.o src/core/transaction.o
 CLI_OBJ = src/cli/main.o
 STRESS_OBJ = src/cli/stress_test.o
 
-# On demande à construire 'kivadb' (le nouveau nom) et 'stress_test'
+# Cibles principales
 all: kivadb stress_test
 
-# Règle pour l'exécutable principal (renommé en kivadb)
+# Règle pour l'exécutable principal
 kivadb: $(CORE_OBJ) $(CLI_OBJ)
 	$(CC) $(CORE_OBJ) $(CLI_OBJ) -o kivadb
 
@@ -17,10 +17,15 @@ kivadb: $(CORE_OBJ) $(CLI_OBJ)
 stress_test: $(CORE_OBJ) $(STRESS_OBJ)
 	$(CC) $(CORE_OBJ) $(STRESS_OBJ) -o stress_test
 
-# Compilation des fichiers .o (Règles génériques pour simplifier)
+# Compilation des fichiers .o
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Nettoyage (Ajout de kivadb sans .exe pour être compatible tout système)
+# Nettoyage robuste
 clean:
-	rm -f src/core/*.o src/cli/*.o kivadb kivadb.exe stress_test stress_test.exe
+	@echo Cleaning files...
+	-rm -f src/core/*.o src/cli/*.o kivadb kivadb.exe stress_test stress_test.exe
+	@echo Done.
+
+# Reconstruire tout proprement
+re: clean all

@@ -6,13 +6,30 @@
 #include "../../include/kivadb.h"
 #include "kivadb_internal.h"
 
+static KivaType detect_type(const char* value) {
+    if (strcmp(value, "true") == 0 || strcmp(value, "false") == 0) {
+        return TYPE_BOOLEAN;
+    }
+    
+    // Vérifie si c'est un nombre (tous les caractères sont des chiffres)
+    char* endptr;
+    strtol(value, &endptr, 10);
+    if (*value != '\0' && *endptr == '\0') {
+        return TYPE_NUMBER;
+    }
+    return TYPE_STRING;
+}
+
 // Chargement au démarrage
 static void kiva_load_index(KivaDB* db) {
     fseek(db->file, 0, SEEK_SET);
     uint32_t k_size, v_size;
+    uint8_t type_raw; // Pour lire le type sur 1 octet
 
     while (fread(&k_size, sizeof(uint32_t), 1, db->file) == 1) {
         if (fread(&v_size, sizeof(uint32_t), 1, db->file) != 1) break;
+        if (fread(&type_raw, sizeof(uint8_t), 1, db->file) != 1) break; // Lire le type
+
         char* key = malloc(k_size + 1);
         fread(key, 1, k_size, db->file);
         key[k_size] = '\0';
@@ -21,7 +38,8 @@ static void kiva_load_index(KivaDB* db) {
             index_remove(db, key);
             free(key);
         } else {
-            index_set(db, key, ftell(db->file), v_size);
+            // On stocke le type lu dans l'index
+            index_set(db, key, ftell(db->file), v_size, (KivaType)type_raw);
             fseek(db->file, v_size, SEEK_CUR);
             free(key);
         }
@@ -52,16 +70,20 @@ KivaDB* kiva_open(const char* path) {
 
 KivaStatus kiva_set(KivaDB* db, const char* key, const char* value) {
     uint32_t k_size = strlen(key), v_size = strlen(value);
+    uint8_t type = (uint8_t)detect_type(value); // Détecter le type
+
     fseek(db->file, 0, SEEK_END);
     long pos = ftell(db->file);
 
     fwrite(&k_size, sizeof(uint32_t), 1, db->file);
     fwrite(&v_size, sizeof(uint32_t), 1, db->file);
+    fwrite(&type, sizeof(uint8_t), 1, db->file); // ÉCRIRE LE TYPE SUR DISQUE
     fwrite(key, 1, k_size, db->file);
     fwrite(value, 1, v_size, db->file);
     fflush(db->file);
 
-    index_set(db, key, pos + (sizeof(uint32_t) * 2) + k_size, v_size);
+    // Mettre à jour l'index avec le type
+    index_set(db, key, pos + (sizeof(uint32_t) * 2) + sizeof(uint8_t) + k_size, v_size, (KivaType)type);
     return KIVA_OK;
 }
 
@@ -182,4 +204,21 @@ long kiva_get_file_size(const char* path) {
     long size = ftell(fp);
     fclose(fp);
     return size;
+}
+
+const char* kiva_typeof(KivaDB* db, const char* key) {
+    unsigned long h = hash_function(key);
+    HashNode* node = db->index[h];
+    while (node) {
+        if (strcmp(node->key, key) == 0) {
+            switch(node->entry.type) {
+                case TYPE_STRING:  return "string";
+                case TYPE_NUMBER:  return "number";
+                case TYPE_BOOLEAN: return "boolean";
+                default:           return "unknown";
+            }
+        }
+        node = node->next;
+    }
+    return "undefined";
 }

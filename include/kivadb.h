@@ -20,6 +20,18 @@ typedef enum {
     KIVA_ERR_MALLOC
 } KivaStatus;
 
+typedef enum {
+    TYPE_STRING = 0,
+    TYPE_NUMBER = 1,
+    TYPE_BOOLEAN = 2
+} KivaType;
+
+typedef struct {
+    long offset;
+    uint32_t v_size;
+    KivaType type; // Vérifie bien que cette ligne est présente ici
+} KeyDirEntry;
+
 /**
  * Ouvre ou crée une base de données KivaDB.
  * @param path Chemin vers le fichier .kiva
@@ -52,4 +64,5 @@ KivaStatus kiva_compact(KivaDB* db);
 
 long kiva_get_file_size(const char* path);
 
+const char* kiva_typeof(KivaDB* db, const char* key);
 #endif // KIVADB_H

@@ -32,7 +32,7 @@ void index_remove(KivaDB* db, const char* key) {
 }
 
 // Ajouter ou mettre à jour une clé dans l'index RAM
-void index_set(KivaDB* db, const char* key, long offset, uint32_t v_size) {
+void index_set(KivaDB* db, const char* key, long offset, uint32_t v_size, KivaType type) {
     unsigned long h = hash_function(key);
     HashNode* node = db->index[h];
 
@@ -40,6 +40,7 @@ void index_set(KivaDB* db, const char* key, long offset, uint32_t v_size) {
         if (strcmp(node->key, key) == 0) {
             node->entry.offset = offset;
             node->entry.v_size = v_size;
+            node->entry.type = type; // Maintenant 'type' est connu !
             return;
         }
         node = node->next;
@@ -50,22 +51,31 @@ void index_set(KivaDB* db, const char* key, long offset, uint32_t v_size) {
         new_node->key = strdup(key);
         new_node->entry.offset = offset;
         new_node->entry.v_size = v_size;
+        new_node->entry.type = type; // On stocke le type pour les nouvelles clés
         new_node->next = db->index[h];
         db->index[h] = new_node;
     }
 }
 
 void index_scan(KivaDB* db) {
-    printf("--- Current Keys in Database ---\n");
+    printf("\n--- Current Keys in Database ---\n");
     int count = 0;
     for (int i = 0; i < HASH_SIZE; i++) {
         HashNode* node = db->index[i];
         while (node) {
-            // On affiche la clé et la taille de sa valeur sur le disque
-            printf("  -> %s (%u bytes)\n", node->key, node->entry.v_size);
+            const char* type_str = "unknown";
+            // Conversion du type enum en texte pour l'affichage
+            if (node->entry.type == TYPE_STRING) type_str = "string";
+            else if (node->entry.type == TYPE_NUMBER) type_str = "number";
+            else if (node->entry.type == TYPE_BOOLEAN) type_str = "boolean";
+
+            printf("  -> %-15s | Type: %-8s | Size: %u bytes\n", 
+                   node->key, type_str, node->entry.v_size);
+            
             node = node->next;
             count++;
         }
     }
+    printf("--------------------------------\n");
     printf("Total: %d keys found.\n", count);
 }

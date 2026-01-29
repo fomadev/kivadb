@@ -7,10 +7,7 @@
 
 #define HASH_SIZE 1024
 
-typedef struct {
-    long offset;      
-    uint32_t v_size;  
-} KeyDirEntry;
+// --- NOTE : On a supprimé KeyDirEntry d'ici car elle est déjà dans kivadb.h ---
 
 typedef struct HashNode {
     char* key;
@@ -26,13 +23,13 @@ struct KivaDB {
 
 // --- Fonctions de index.c ---
 unsigned long hash_function(const char* str);
-void index_set(KivaDB* db, const char* key, long offset, uint32_t v_size);
+// On garde UNIQUEMENT la version à 5 arguments
+void index_set(KivaDB* db, const char* key, long offset, uint32_t v_size, KivaType type);
 void index_remove(KivaDB* db, const char* key);
 void index_scan(KivaDB* db);
 
 // --- Fonctions de transaction.c ---
 int kiva_lock_file(FILE* file);
 void kiva_unlock_file(FILE* file);
-
 
 #endif
