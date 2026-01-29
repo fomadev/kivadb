@@ -82,13 +82,36 @@ char* kiva_get(KivaDB* db, const char* key) {
 }
 
 KivaStatus kiva_delete(KivaDB* db, const char* key) {
-    uint32_t k_size = strlen(key), v_size = 0;
+    // ÉTAPE 1 : Vérifier si la clé existe dans l'index (Hash Map)
+    unsigned long h = hash_function(key);
+    HashNode* node = db->index[h];
+    int found = 0;
+
+    while (node) {
+        if (strcmp(node->key, key) == 0) {
+            found = 1;
+            break;
+        }
+        node = node->next;
+    }
+
+    // ÉTAPE 2 : Si la clé n'existe pas, on s'arrête ici
+    if (!found) {
+        return KIVA_ERR_NOT_FOUND; // Ou ton code d'erreur correspondant
+    }
+
+    // ÉTAPE 3 : La clé existe, on procède à la suppression logique
+    uint32_t k_size = strlen(key), v_size = 0; // v_size = 0 est notre "Tombstone"
     fseek(db->file, 0, SEEK_END);
+    
     fwrite(&k_size, sizeof(uint32_t), 1, db->file);
     fwrite(&v_size, sizeof(uint32_t), 1, db->file);
     fwrite(key, 1, k_size, db->file);
     fflush(db->file);
+
+    // ÉTAPE 4 : Retirer de la mémoire vive
     index_remove(db, key);
+    
     return KIVA_OK;
 }
 

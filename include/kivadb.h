@@ -10,6 +10,8 @@ typedef struct KivaDB KivaDB;
 // Codes de retour pour la gestion d'erreurs
 typedef enum {
     KIVA_OK = 0,
+    KIVA_NOT_FOUND = -1,
+    KIVA_WRITE_ERROR = -2,
     KIVA_ERR_OPEN,
     FILE_ERR_WRITE,
     KIVA_ERR_NOT_FOUND,

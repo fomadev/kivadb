@@ -106,17 +106,27 @@ int main() {
             }
         } 
         else if (strncmp(cmd, "del ", 4) == 0) {
-        char extra[128];
-        int num_args = sscanf(cmd + 4, "%s %s", key, extra);
-        
-        if (num_args != 1) {
-            printf("Error: 'del' command expects exactly 1 argument.\nUsage: del <key>\n");
-            executed = 0;
-        } else {
-            kiva_delete(db, key);
-            printf("OK\n");
+            char extra[128];
+            int num_args = sscanf(cmd + 4, "%s %s", key, extra);
+            
+            if (num_args != 1) {
+                printf("Error: 'del' command expects exactly 1 argument.\nUsage: del <key>\n");
+                executed = 0;
+            } else {
+                // On récupère le statut renvoyé par le moteur
+                KivaStatus status = kiva_delete(db, key);
+                
+                if (status == KIVA_OK) {
+                    printf("OK (Deleted)");
+                } else if (status == KIVA_ERR_NOT_FOUND) {
+                    printf("Error: Key '%s' not found.", key);
+                    executed = 0; // Optionnel : pour ne pas afficher le temps si c'est une erreur
+                } else {
+                    printf("Error: Could not delete key.");
+                    executed = 0;
+                }
+            }
         }
-    }
         else if (strcmp(cmd, "compact") == 0) {
             kiva_compact(db);
             printf("Compaction done");
