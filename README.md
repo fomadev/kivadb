@@ -1,12 +1,12 @@
-# KivaDB 
+# KivaDB 🚀
 
-KivaDB est un moteur de base de données clé-valeur (Key-Value Store) ultra-léger écrit en C, inspiré par l'architecture Bitcask. Il utilise un journal d'écriture seule (Append-only log) et une table de hachage en mémoire pour des performances optimales.
+KivaDB est un moteur de base de données clé-valeur (Key-Value Store) ultra-léger écrit en C, inspiré par l'architecture **Bitcask**. Il utilise un journal d'écriture seule (*Append-only log*) et une table de hachage en mémoire pour garantir des performances de pointe.
 
-## ✨ Nouveautés de la v1.0.2
-- **Typage Dynamique** : Support automatique des types `String`, `Number`, et `Boolean`.
-- **Support des Espaces** : Possibilité d'enregistrer des valeurs avec espaces en utilisant des guillemets (ex: `"Fordi Malanda"`).
-- **Interface CLI Améliorée** : Nouvelles commandes `typeof` et `stats`.
-- **Arguments CLI** : Support de `-v / --version` et `-h / --help`.
+## ✨ Nouveautés de la v1.0.3
+- **Opérations Groupées (Bulk)** : Traitez plusieurs clés en une seule commande grâce au mot-clé `and`.
+- **Analyseur Syntaxique Avancé** : Support robuste des guillemets pour les chaînes contenant des espaces.
+- **Performances Certifiées** : Capacité de traitement de +26 000 ops/sec (validé par stress test).
+- **Typage Dynamique** : Détection automatique des types `String`, `Number`, et `Boolean`.
 
 ## 🛠️ Installation & Compilation
 
@@ -17,6 +17,7 @@ git clone https://github.com/votre-compte/kivadb.git
 cd KivaDB
 make
 ```
+
 ## Utilisation du Shell
 Lancez la base de données :
 ```bash
@@ -28,53 +29,64 @@ Commandes disponible :
   <thead>
     <tr>
       <th>Commande</th>
+      <th>Syntaxe Bulk / Avancée</th>
       <th>Description</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td><code>set &lt;key&gt; &lt;val&gt;</code></td>
-      <td>Crée une nouvelle clé (utiliser "" pour les espaces).</td>
+      <td>set</td>
+      <td><code>set k1 v1 and k2 "valeur complexe"</code></td>
+      <td>Crée de nouvelles paires clé-valeur.</td>
     </tr>
     <tr>
-      <td><code>get &lt;key&gt;</code></td>
-      <td>Récupère la valeur associée à une clé.</td>
+      <td>get</td>
+      <td><code>get key1 and key2</code></td>
+      <td>Récupère les valeurs d'une ou plusieurs clés.</td>
     </tr>
     <tr>
-      <td><code>update &lt;key&gt; &lt;val&gt;</code></td>
-      <td>Modifie une clé existante.</td>
+      <td>update</td>
+      <td><code>update key1 val1 and key2 val2</code></td>
+      <td>Modifie des clés existantes uniquement.</td>
     </tr>
     <tr>
+      <td>typeof</td>
       <td><code>typeof &lt;key&gt;</code></td>
-      <td>Affiche le type de donnée (string, number, boolean).</td>
+      <td>Affiche le type détecté (string, number, boolean).</td>
     </tr>
     <tr>
-      <td><code>del &lt;key&gt;</code></td>
-      <td>Supprime une clé de la base.</td>
+      <td>del</td>
+      <td><code>del key1 and key2</code></td>
+      <td>Supprime une ou plusieurs clés de l'index.</td>
     </tr>
     <tr>
+      <td>scan</td>
       <td><code>scan</code></td>
-      <td>Liste toutes les clés avec leurs types et tailles.</td>
+      <td>Liste toutes les clés, types et tailles en RAM.</td>
     </tr>
     <tr>
+      <td>compact</td>
       <td><code>compact</code></td>
-      <td>Défragmente le fichier disque pour gagner de l'espace.</td>
+      <td>Défragmente le fichier .kiva pour libérer l'espace.</td>
     </tr>
     <tr>
+      <td>stats</td>
       <td><code>stats</code></td>
-      <td>Affiche la santé de la base de données.</td>
+      <td>Affiche l'état de santé et la fragmentation.</td>
     </tr>
   </tbody>
 </table>
 
-## 📁 Structure du Projet
-* `src/core/ `: Moteur de stockage, indexation et transactions.
+## 📈 Performances (Stress Test)
+Les tests effectués sur la v1.0.3 montrent des résultats exceptionnels pour un moteur monothread :
 
-* `src/cli/` : Interface en ligne de commande et tests de stress.
+* **Volume** : 100 000 entrées.
 
-* `include/` : Fichiers d'en-tête (API publique).
+* **Temps total** : ~3.79 secondes.
 
-* `data/` : Dossier contenant le fichier de stockage `.kiva`.
+* **Vitesse moyenne** : 26 364 ops/sec.
+
+* **Stabilité** : Intégrité des données vérifiée post-insertion massive.
 
 # ⚖️ Licence
 Distribué sous licence <a href="LICENSE">MIT</a>.
