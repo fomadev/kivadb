@@ -61,29 +61,48 @@ int main(int argc, char* argv[]) {
         if (strncmp(cmd, "set ", 4) == 0) {
             char *ptr = cmd + 4;
             int found_args = 0, created_count = 0;
+            int executed = 1; // Variable de contrôle du succès
 
             while (*ptr != '\0') {
                 char key[128] = {0}, val[256] = {0};
+                
+                // Ignorer les espaces de début
                 while (*ptr == ' ') ptr++;
-                if (strncmp(ptr, "and ", 4) == 0) { ptr += 4; while (*ptr == ' ') ptr++; }
+                
+                // Gérer le mot-clé optionnel "and" entre les paires
+                if (strncmp(ptr, "and ", 4) == 0) { 
+                    ptr += 4; 
+                    while (*ptr == ' ') ptr++; 
+                }
+                
                 if (*ptr == '\0') break;
 
+                // 1. Extraction de la clé
                 if (sscanf(ptr, "%127s", key) != 1) break;
                 ptr = strstr(ptr, key) + strlen(key);
                 while (*ptr == ' ') ptr++;
 
+                // 2. Extraction de la valeur (avec gestion sécurisée des guillemets)
                 if (*ptr == '"') {
-                    ptr++; int i = 0;
-                    while (*ptr != '"' && *ptr != '\0' && i < 255) { val[i++] = *ptr++; }
-                    if (*ptr == '"') ptr++;
+                    ptr++; // Sauter le guillemet ouvrant
+                    int i = 0;
+                    // Boucle sécurisée : s'arrête si guillemet fermant, fin de chaîne, ou buffer plein
+                    while (*ptr != '"' && *ptr != '\0' && i < 255) { 
+                        val[i++] = *ptr++; 
+                    }
+                    if (*ptr == '"') ptr++; // Sauter le guillemet fermant si présent
                 } else {
-                    sscanf(ptr, "%255s", val);
-                    ptr += strlen(val);
+                    // Lecture d'un mot simple si pas de guillemets
+                    if (sscanf(ptr, "%255s", val) == 1) {
+                        ptr += strlen(val);
+                    }
                 }
 
+                // 3. Traitement en base de données
                 if (strlen(key) > 0) {
                     found_args++;
                     char* existing = kiva_get(db, key);
+                    
                     if (existing) {
                         printf("Error: Key '%s' already exists. Use 'update'.\n", key);
                         free(existing);
@@ -93,10 +112,18 @@ int main(int argc, char* argv[]) {
                         created_count++;
                     }
                 }
+                
+                // Ignorer les espaces après la valeur pour préparer la suite
                 while (*ptr == ' ') ptr++;
             }
-            if (found_args == 0) { printf("Usage: set <key> <val>...\n"); executed = 0; }
-            else printf("Summary: %d key(s) created.", created_count);
+
+            // Résumé de l'opération
+            if (found_args == 0) { 
+                printf("Usage: set <key> <val> [and <key2> <val2>...]\n"); 
+                executed = 0; 
+            } else {
+                printf("Summary: %d key(s) created.\n", created_count);
+            }
         }
 
         // --- Commande UPDATE (Multi) ---
